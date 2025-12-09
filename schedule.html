@@ -1,24 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>NFL Full Schedule Embeds</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    .week { margin-bottom: 40px; }
-    .game { margin: 10px 0; }
-    .game h4 { margin: 5px 0; }
-    iframe { width: 100%; height: 500px; border: 0; }
-  </style>
+  <title>NFL Weekly Schedule</title>
 </head>
-<body>
+<body style="font-family: Arial; margin: 20px;">
 
-<h1>NFL Schedule</h1>
-<div id="schedule">Loading…</div>
+<h1>This Week's Games</h1>
+<div id="games"></div>
 
 <script>
-// ------------- team-name → abbreviation -------------
-const TEAM_MAP = {
+// ---------- CONFIG ----------
+let startingWeek = 14;
+let startingDate = new Date("2025-12-06T16:00:00");
+// ----------------------------
+
+// Compute current week
+function getCurrentWeek() {
+  let now = new Date();
+  let diff = now - startingDate;
+  let weeksPassed = Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
+  return startingWeek + Math.max(0, weeksPassed);
+}
+
+// Team → abbreviation
+const teamAbbr = {
   "Arizona Cardinals": "ari",
   "Atlanta Falcons": "atl",
   "Baltimore Ravens": "bal",
@@ -53,84 +58,58 @@ const TEAM_MAP = {
   "Washington Commanders": "was"
 };
 
-// ------------- Parse CSV -------------
-function parseCSV(csv) {
-  const lines = csv.trim().split('\n');
-  const header = lines.shift().split(',');
-  return lines.map(line => {
-    const values = line.split(',');
-    const obj = {};
-    header.forEach((h,i) => obj[h.trim()] = values[i]?.trim());
-    return obj;
-  });
+// Load CSV
+fetch("schedule.csv")
+  .then(res => res.text())
+  .then(csv => parseCSV(csv));
+
+function parseCSV(csvText) {
+  let rows = csvText.trim().split("\n").map(r => r.split(","));
+  let headers = rows.shift();
+  let week = getCurrentWeek();
+
+  let games = rows.filter(r => Number(r[1]) === week);
+
+  renderGames(games);
 }
 
-function renderSchedule(games) {
-  const byWeek = {};
-  
-  games.forEach(g => {
-    const wk = g["Round Number"];
-    if (!wk) return;
-    if (!byWeek[wk]) byWeek[wk] = [];
-    byWeek[wk].push(g);
-  });
+function renderGames(games) {
+  let container = document.getElementById("games");
 
-  const container = document.getElementById("schedule");
+  if (games.length === 0) {
+    container.innerHTML = "<p>No games this week.</p>";
+    return;
+  }
+
   container.innerHTML = "";
 
-  Object.keys(byWeek)
-    .sort((a,b) => a - b)
-    .forEach(wk => {
-      const weekDiv = document.createElement("div");
-      weekDiv.className = "week";
-      weekDiv.innerHTML = `<h2>Week ${wk}</h2>`;
-      
-      byWeek[wk].forEach(g => {
-        const home = g["Home Team"];
-        const away = g["Away Team"];
-        if (!home || !away) return;
+  games.forEach(game => {
+    let date = game[2].split(" ")[0].split("/"); // DD/MM/YYYY
+    let yyyy = date[2];
+    let mm = date[1].padStart(2, "0");
+    let dd = date[0].padStart(2, "0");
+    let formattedDate = `${yyyy}-${mm}-${dd}`;
 
-        const dateRaw = g["Date"]?.split(" ")[0]; // DD/MM/YYYY
-        if (!dateRaw) return;
+    let home = teamAbbr[game[4]];
+    let away = teamAbbr[game[5]];
 
-        const [day, month, year] = dateRaw.split("/");
-        const date = `${year}-${month}-${day}`; // YYYY-MM-DD
+    let iframeURL = `https://playembed.top/embed/nfl/${formattedDate}/${away}-${home}`;
 
-        const homeCode = TEAM_MAP[home];
-        const awayCode = TEAM_MAP[away];
+    let block = `
+      <div style="margin-bottom: 25px;">
+        <h3>${game[5]} @ ${game[4]}</h3>
+        <iframe 
+          src="${iframeURL}"
+          width="100%" height="500px"
+          allowfullscreen allow="encrypted-media; picture-in-picture;"
+          frameborder="0">
+        </iframe>
+      </div>
+    `;
 
-        if (!homeCode || !awayCode) {
-          console.warn("Unknown team:", home, away);
-          return;
-        }
-
-        const src = `https://playembed.top/embed/nfl/${date}/${awayCode}-${homeCode}`;
-
-        const gameDiv = document.createElement("div");
-        gameDiv.className = "game";
-        gameDiv.innerHTML = `
-          <h4>${away} @ ${home} — ${g["Date"]}</h4>
-          <iframe src="${src}" allowfullscreen allow="encrypted-media; picture-in-picture;"></iframe>
-        `;
-        
-        weekDiv.appendChild(gameDiv);
-      });
-
-      container.appendChild(weekDiv);
-    });
-}
-
-// ------------- Load schedule.csv -------------
-fetch("schedule.csv")
-  .then(r => r.text())
-  .then(text => {
-    const games = parseCSV(text);
-    renderSchedule(games);
-  })
-  .catch(err => {
-    document.getElementById("schedule").innerHTML = "Error loading schedule.csv";
-    console.error(err);
+    container.innerHTML += block;
   });
+}
 </script>
 
 </body>
