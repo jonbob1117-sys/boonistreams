@@ -1,10 +1,39 @@
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;">
-   <div style="margin-bottom: 20px;">
+
+<script>
+// ---------- CONFIG ----------
+let startingWeek = 14;                   // your original week
+let startingDate = new Date("2025-12-07T16:00:00");  
+// ^ Set this to the FIRST Saturday at 4pm that corresponds to wk14
+// -------------------------------------
+
+function getCurrentWeek() {
+  let now = new Date();
+
+  // Calculate how many Saturdays 4pm have passed
+  let diff = now - startingDate;
+  let weeksPassed = Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
+
+  return startingWeek + Math.max(0, weeksPassed);
+}
+
+// Update RedZone iframe based on week logic
+function updateRedzone() {
+  let currentWeek = getCurrentWeek();
+  let iframe = document.getElementById("player-redzone");
+
+  iframe.src = `https://playembed.top/embed/nfl-redzone-wk${currentWeek}`;
+}
+
+window.onload = updateRedzone;
+</script>
+
+<div style="margin-bottom: 20px;">
   <h2>RedZone</h2>
   <iframe id="player-redzone" marginheight="0" marginwidth="0"
-    src="https://playembed.top/embed/nfl-redzone-wk14"
+    src=""
     scrolling="no" allowfullscreen="yes"
     allow="encrypted-media; picture-in-picture;"
     width="100%" height="500px" frameborder="0">
@@ -12,9 +41,9 @@
 </div>
 
 <div>
-  <h2>Packers vs Bears</h2>
+  <h2>Chargers vs Eagles</h2>
   <iframe id="player-packers-bears" marginheight="0" marginwidth="0"
-    src="https://playembed.top/embed/nfl/2025-12-07/chi-gb"
+    src="https://playembed.top/embed/nfl/2025-12-08/phi-lac"
     scrolling="no" allowfullscreen="yes"
     allow="encrypted-media; picture-in-picture;"
     width="100%" height="500px" frameborder="0">
@@ -23,5 +52,3 @@
 
 </body>
 </html>
-
-
