@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NFL Full Schedule Embeds</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .week { margin-bottom: 40px; }
+    .game { margin: 10px 0; }
+    .game h4 { margin: 5px 0; }
+    iframe { width: 100%; height: 500px; border: 0; }
+  </style>
+</head>
+<body>
+
+<h1>NFL Schedule</h1>
+<div id="schedule">Loading…</div>
+
+<script>
+// ------------- team-name → abbreviation -------------
+const TEAM_MAP = {
+  "Arizona Cardinals": "ari",
+  "Atlanta Falcons": "atl",
+  "Baltimore Ravens": "bal",
+  "Buffalo Bills": "buf",
+  "Carolina Panthers": "car",
+  "Chicago Bears": "chi",
+  "Cincinnati Bengals": "cin",
+  "Cleveland Browns": "cle",
+  "Dallas Cowboys": "dal",
+  "Denver Broncos": "den",
+  "Detroit Lions": "det",
+  "Green Bay Packers": "gb",
+  "Houston Texans": "hou",
+  "Indianapolis Colts": "ind",
+  "Jacksonville Jaguars": "jax",
+  "Kansas City Chiefs": "kc",
+  "Las Vegas Raiders": "lv",
+  "Los Angeles Chargers": "lac",
+  "Los Angeles Rams": "lar",
+  "Miami Dolphins": "mia",
+  "Minnesota Vikings": "min",
+  "New England Patriots": "ne",
+  "New Orleans Saints": "no",
+  "New York Giants": "nyg",
+  "New York Jets": "nyj",
+  "Philadelphia Eagles": "phi",
+  "Pittsburgh Steelers": "pit",
+  "San Francisco 49ers": "sf",
+  "Seattle Seahawks": "sea",
+  "Tampa Bay Buccaneers": "tb",
+  "Tennessee Titans": "ten",
+  "Washington Commanders": "was"
+};
+
+// ------------- Parse CSV -------------
+function parseCSV(csv) {
+  const lines = csv.trim().split('\n');
+  const header = lines.shift().split(',');
+  return lines.map(line => {
+    const values = line.split(',');
+    const obj = {};
+    header.forEach((h,i) => obj[h.trim()] = values[i]?.trim());
+    return obj;
+  });
+}
+
+function renderSchedule(games) {
+  const byWeek = {};
+  
+  games.forEach(g => {
+    const wk = g["Round Number"];
+    if (!wk) return;
+    if (!byWeek[wk]) byWeek[wk] = [];
+    byWeek[wk].push(g);
+  });
+
+  const container = document.getElementById("schedule");
+  container.innerHTML = "";
+
+  Object.keys(byWeek)
+    .sort((a,b) => a - b)
+    .forEach(wk => {
+      const weekDiv = document.createElement("div");
+      weekDiv.className = "week";
+      weekDiv.innerHTML = `<h2>Week ${wk}</h2>`;
+      
+      byWeek[wk].forEach(g => {
+        const home = g["Home Team"];
+        const away = g["Away Team"];
+        if (!home || !away) return;
+
+        const dateRaw = g["Date"]?.split(" ")[0]; // DD/MM/YYYY
+        if (!dateRaw) return;
+
+        const [day, month, year] = dateRaw.split("/");
+        const date = `${year}-${month}-${day}`; // YYYY-MM-DD
+
+        const homeCode = TEAM_MAP[home];
+        const awayCode = TEAM_MAP[away];
+
+        if (!homeCode || !awayCode) {
+          console.warn("Unknown team:", home, away);
+          return;
+        }
+
+        const src = `https://playembed.top/embed/nfl/${date}/${awayCode}-${homeCode}`;
+
+        const gameDiv = document.createElement("div");
+        gameDiv.className = "game";
+        gameDiv.innerHTML = `
+          <h4>${away} @ ${home} — ${g["Date"]}</h4>
+          <iframe src="${src}" allowfullscreen allow="encrypted-media; picture-in-picture;"></iframe>
+        `;
+        
+        weekDiv.appendChild(gameDiv);
+      });
+
+      container.appendChild(weekDiv);
+    });
+}
+
+// ------------- Load schedule.csv -------------
+fetch("schedule.csv")
+  .then(r => r.text())
+  .then(text => {
+    const games = parseCSV(text);
+    renderSchedule(games);
+  })
+  .catch(err => {
+    document.getElementById("schedule").innerHTML = "Error loading schedule.csv";
+    console.error(err);
+  });
+</script>
+
+</body>
+</html>
